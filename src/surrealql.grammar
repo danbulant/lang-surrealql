@@ -7,6 +7,18 @@
     statement
 }
 
+@precedence {
+    int,
+    array @left,
+    dot @left,
+    exp @left,
+    times @left,
+    plus @left,
+    comparison @left,
+    and @left,
+    or @left
+}
+
 @skip { whitespace | LineComment }
 
 kw<term> { @specialize[@name={term}]<identifier, term> }
@@ -29,7 +41,7 @@ GeneratedRecordID {
     Table ":" FunctionCall
 }
 Variable {
-    kw<"$"> identifier
+    "$" identifier
 }
 
 StringPrefix {
@@ -39,17 +51,17 @@ StringPrefix {
 @skip {} {
     String[isolate] {
         StringPrefix?
-        ('"' (stringContentDouble | Escape)* ('"' | "\n") |
-        "'" (stringContentSingle | Escape)* ("'" | "\n"))
+        ('"' (stringContentDouble | Escape)* ('"') |
+        "'" (stringContentSingle | Escape)* ("'"))
     }
 }
 
-@precedence { decimal @left, float @left, integer @left }
-
 Integer { int }
-Decimal { int ("." int)? "dec" }
-Float { int (("." int) "f"? | "f" ) }
-number { Decimal !decimal | Float !float | Integer !integer  }
+Decimal { int !int ("." int)? "dec" }
+Float { int !int (("." int) "f"? | "f" ) }
+Duration { int ("d" | "h" | "m" | "s" | "ms" | "us" | "ns") }
+
+number { Decimal | Float | Integer  }
 
 Array {
     "[" (expression (COMMA expression)*)? "]"
@@ -81,6 +93,43 @@ Future {
 Column {
     identifier
 }
+Field {
+    expression ("as" identifier)? |
+    "*"
+}
+BinaryExpression {
+    expression !and ("&&" | "AND") expression |
+    expression !or ("||" | "OR") expression |
+    expression !comparison (
+        "??" | "?:" |
+        "=" | "IS" |
+        "!=" | "IS NOT"|
+        "==" |
+        "?=" | "*=" |
+        "~" | "!~" | "?~" | "*~" |
+        "IN" | "NOT IN" |
+        "CONTAINS" | "∋" |
+        "CONTAINSNOT" | "∌" |
+        "CONTAINSALL" | "⊇" |
+        "CONTAINSANY" | "⊃" |
+        "CONTAINSNONE" | "⊅" |
+        "INSIDE" | "∈" |
+        "NOTINSIDE" | "NOT IN" | "∉" |
+        "ALLINSIDE" | "⊆" |
+        "ANYINSIDE" | "⊂" |
+        "NONEINSIDE" | "⊄" |
+        "OUTSIDE" |
+        "INTERSECTS" |
+        "@@" | "@" identifier "@" |
+        "<" | ">" | "<=" | ">="
+    ) expression |
+    expression !exp Raise expression |
+    expression !times (Divide | Multiply) expression |
+    expression !plus (Add | Subtract) expression |
+    expression !dot (".*" | ("." "*."*) expression) |
+    expression? !dot "->" expression |
+    expression !array ("[" expression "]")
+}
 
 ReturnStatement {
     kw<"return"> expression
@@ -94,10 +143,67 @@ BreakStatement {
 CancelStatement {
     kw<"cancel"> kw<"transaction">?
 }
+CommitStatement {
+    kw<"commit"> kw<"transaction">?
+}
+ContinueStatement {
+    kw<"continue">
+}
+UseStatement {
+    kw<"use">
+    (kw<"ns"> identifier)?
+    (kw<"db"> identifier)?
+}
+ThrowStatement {
+    kw<"throw"> expression
+}
+SleepStatement {
+    kw<"sleep"> expression
+}
+ShowStatement {
+    kw<"show"> ckw<"changes"> kw<"for"> kw<"table">
+    expression
+    ("since" expression)?
+    ("limit" expression)?
+}
+LetStatement {
+    kw<"let"> Variable "=" (expression | statement)
+}
+InfoStatement {
+    kw<"info"> kw<"for">
+    (
+        kw<"root"> |
+        kw<"ns"> | kw<"namespace"> |
+        kw<"db"> | kw<"database"> |
+        kw<"scope"> expression |
+        kw<"table"> expression
+    )
+}
+orderBy {
+    expression (kw<"collate"> | kw<"numeric">)? (kw<"asc"> | kw<"desc">)?
+}
+SelectStatement {
+    kw<"select">
+    kw<"value">?
+    (Field (COMMA Field)*)
+    ("omit" Field (COMMA Field)*)?
+    "from" kw<"only">? expression (COMMA expression)*
+    ("with" (kw<"noindex"> | kw<"index"> identifier (COMMA identifier)))?
+    ("where" expression)?
+    ("split" kw<"at">? expression)?
+    // ("group" kw<"by">? expression (COMMA expression)*)?
+    // ("order" kw<"by">? orderBy (COMMA orderBy)*)?
+    // ("limit" kw<"by">? expression)?
+    // ("start" kw<"at">? expression)?
+    ("timeout" expression)?
+    "parallel"?
+    ("explain" kw<"full">?)?
+}
 
-expression[@isGroup=Expression] {
+expression {
     String |
     number |
+    Duration |
     Array |
     Object |
     FunctionCall |
@@ -105,13 +211,28 @@ expression[@isGroup=Expression] {
     Variable |
     Cast |
     RecordID |
-    Column
+    Column |
+    ParenthesizedExpression |
+    BinaryExpression
 }
+ParenthesizedExpression {
+    "(" (expression | statement) ")"
+}
+
 statement[@isGroup=Statement] {
     ReturnStatement |
     BeginStatement |
     BreakStatement |
-    CancelStatement
+    CancelStatement |
+    CommitStatement |
+    ContinueStatement |
+    UseStatement |
+    ThrowStatement |
+    SleepStatement |
+    ShowStatement |
+    LetStatement |
+    InfoStatement |
+    SelectStatement
 }
 
 @local tokens {
@@ -129,6 +250,7 @@ statement[@isGroup=Statement] {
     int { @digit+ }
 
     identifier { $[a-zA-Z] $[a-zA-Z0-9_]* }
+    columnIdentifier { identifier | "*" }
 
     RIDDelim { "`" }
     RIDStart { "⟨" }
@@ -136,27 +258,30 @@ statement[@isGroup=Statement] {
     RIDDelimContent { $[^`]+ }
     RIDContent { $[^⟨⟩]+ }
 
-    Divide { "/" }
-    Multiply { "*" }
+    Divide { "/" | "÷" }
+    Multiply { "*" | "×" }
     Add { "+" }
     Subtract { "-" }
-    LessThan { "<" }
-    GreaterThan { ">" }
+    Raise { "**" }
 
     Escape {
       "\\" ("x" hex hex | "u" ("{" hex+ "}" | hex hex hex hex) | ![xu])
     }
     hex { @digit | $[a-fA-F] }
-    stringContentSingle { ![\\\n']+ }
-    stringContentDouble { ![\\\n"]+ }
+    stringContentSingle { ![\\']+ }
+    stringContentDouble { ![\\"]+ }
 
-    EQ { "=" }
     COMMA { "," }
     SEMI { ";" }
 
+    "/*"
     "(" ")" "[" "]" "{" "}"
 
     "."
+    "->"
+
+    @precedence { "/*", LineComment, Divide }
+    @precedence { LineComment, Subtract }
 }
 
 @detectDelim
