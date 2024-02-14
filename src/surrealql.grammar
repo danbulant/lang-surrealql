@@ -98,35 +98,15 @@ Field {
     "*"
 }
 BinaryExpression {
-    expression !and ("&&" | "AND") expression |
-    expression !or ("||" | "OR") expression |
+    expression !and And expression |
+    expression !or Or expression |
     expression !comparison (
-        "??" | "?:" |
-        "=" | "IS" |
-        "!=" | "IS NOT"|
-        "==" |
-        "?=" | "*=" |
-        "~" | "!~" | "?~" | "*~" |
-        "IN" | "NOT IN" |
-        "CONTAINS" | "∋" |
-        "CONTAINSNOT" | "∌" |
-        "CONTAINSALL" | "⊇" |
-        "CONTAINSANY" | "⊃" |
-        "CONTAINSNONE" | "⊅" |
-        "INSIDE" | "∈" |
-        "NOTINSIDE" | "NOT IN" | "∉" |
-        "ALLINSIDE" | "⊆" |
-        "ANYINSIDE" | "⊂" |
-        "NONEINSIDE" | "⊄" |
-        "OUTSIDE" |
-        "INTERSECTS" |
-        "@@" | "@" identifier "@" |
-        "<" | ">" | "<=" | ">="
+        Comparison | "@" identifier "@"
     ) expression |
     expression !exp Raise expression |
     expression !times (Divide | Multiply) expression |
     expression !plus (Add | Subtract) expression |
-    expression !dot (".*" | ("." "*."*) expression) |
+    expression !dot (".*"+ | ("." "*."*) expression) |
     expression? !dot "->" expression |
     expression !array ("[" expression "]")
 }
@@ -161,7 +141,7 @@ SleepStatement {
     kw<"sleep"> expression
 }
 ShowStatement {
-    kw<"show"> ckw<"changes"> kw<"for"> kw<"table">
+    kw<"show"> ckw<"changes"> kw<"for"> ckw<"table">
     expression
     ("since" expression)?
     ("limit" expression)?
@@ -176,25 +156,49 @@ InfoStatement {
         kw<"ns"> | kw<"namespace"> |
         kw<"db"> | kw<"database"> |
         kw<"scope"> expression |
-        kw<"table"> expression
+        ckw<"table"> expression
     )
 }
 orderBy {
-    expression (kw<"collate"> | kw<"numeric">)? (kw<"asc"> | kw<"desc">)?
+    expression ("collate" | "numeric")? ("asc" | "desc")?
+}
+maybeValue {
+    kw<"value">?
+}
+maybeAt {
+    kw<"at">?
+}
+maybeBy {
+    kw<"by">?
+}
+selectWith {
+    ("with" (kw<"noindex"> | kw<"index"> identifier (COMMA identifier)))?
+}
+maybeOnly {
+    kw<"only">?
+}
+selectOrder {
+    ("order" maybeBy orderBy (COMMA orderBy)*)?
+}
+selectFrom {
+    ("from" maybeOnly expression (COMMA expression)*)?
+}
+Where {
+    "where" expression
 }
 SelectStatement {
     kw<"select">
-    kw<"value">?
+    maybeValue
     (Field (COMMA Field)*)
     ("omit" Field (COMMA Field)*)?
-    "from" kw<"only">? expression (COMMA expression)*
-    ("with" (kw<"noindex"> | kw<"index"> identifier (COMMA identifier)))?
-    ("where" expression)?
-    ("split" kw<"at">? expression)?
-    // ("group" kw<"by">? expression (COMMA expression)*)?
-    // ("order" kw<"by">? orderBy (COMMA orderBy)*)?
-    // ("limit" kw<"by">? expression)?
-    // ("start" kw<"at">? expression)?
+    selectFrom
+    selectWith
+    Where?
+    ("split" maybeAt expression)?
+    ("group" maybeBy expression (COMMA expression)*)?
+    selectOrder
+    ("limit" maybeBy expression)?
+    ("start" maybeAt expression)?
     ("timeout" expression)?
     "parallel"?
     ("explain" kw<"full">?)?
@@ -273,6 +277,31 @@ statement[@isGroup=Statement] {
 
     COMMA { "," }
     SEMI { ";" }
+    Comparison {
+        "??" | "?:" |
+        "=" | "IS" |
+        "!=" | "IS NOT"|
+        "==" |
+        "?=" | "*=" |
+        "~" | "!~" | "?~" | "*~" |
+        "IN" | "NOT IN" |
+        "CONTAINS" | "∋" |
+        "CONTAINSNOT" | "∌" |
+        "CONTAINSALL" | "⊇" |
+        "CONTAINSANY" | "⊃" |
+        "CONTAINSNONE" | "⊅" |
+        "INSIDE" | "∈" |
+        "NOTINSIDE" | "NOT IN" | "∉" |
+        "ALLINSIDE" | "⊆" |
+        "ANYINSIDE" | "⊂" |
+        "NONEINSIDE" | "⊄" |
+        "OUTSIDE" |
+        "INTERSECTS" |
+        "<" | ">" | "<=" | ">=" |
+        "@@"
+    }
+    And { "&&" | "and" }
+    Or { "||" | "or" }
 
     "/*"
     "(" ")" "[" "]" "{" "}"
