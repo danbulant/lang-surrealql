@@ -19,18 +19,86 @@
     or @left
 }
 
-@skip { whitespace | LineComment }
+@skip { whitespace | LineComment | BlockComment }
+
+@external tokens tokens from "./tokens" {
+    As,
+    Since,
+    Limit,
+    Collate,
+    Numeric,
+    Asc,
+    Desc,
+    With,
+    Order,
+    Omit,
+    Where,
+    From,
+    Split,
+    Group,
+    Start,
+    Timeout,
+    Parallel,
+    Explain,
+    In,
+    Then,
+    Else,
+    End,
+    identifier
+}
+@external specialize {identifier} specializeIdent from "./tokens" {
+    Return,
+    Transaction,
+    Begin,
+    Break,
+    Cancel,
+    Commit,
+    Continue,
+    Use,
+    Ns,
+    Db,
+    Throw,
+    Sleep,
+    Show,
+    For,
+    Let,
+    Info,
+    Root,
+    Namespace,
+    Database,
+    Scope,
+    Value,
+    At,
+    By,
+    Noindex,
+    Index,
+    Only,
+    Full,
+    If,
+    True,
+    False,
+    None,
+    Null,
+    Comparison,
+    And,
+    Or,
+    Select
+}
+@external extend {identifier} extendIdent from "./tokens" {
+    Changes,
+    Table
+}
 
 kw<term> { @specialize[@name={term}]<identifier, term> }
 ckw<term> { @extend[@name={term}]<identifier, term> }
 
-Table { identifier }
+TableId { identifier }
 RecordID {
-    Table ":"
+    TableId ":"
     (identifier | RIDStart RIDContent RIDEnd | RIDDelim RIDDelimContent RIDDelim | Array | Object)
 }
 RecordRange {
-    Table ":"
+    TableId ":"
     (
         number? (".." | "..=") number? |
         Array? (".." | "..=") Array? |
@@ -38,7 +106,7 @@ RecordRange {
     )
 }
 GeneratedRecordID {
-    Table ":" FunctionCall
+    TableId ":" FunctionCall
 }
 Variable {
     "$" identifier
@@ -57,11 +125,17 @@ StringPrefix {
 }
 
 Integer { int }
-Decimal { int !int ("." int)? "dec" }
-Float { int !int (("." int) "f"? | "f" ) }
+Decimal { int !int ("." int)? kw<"dec"> }
+Float { int !int (("." int) ckw<"f">? | ckw<"f"> ) }
 Duration { int DurationUnit }
 DurationUnit {
-    "d" | "h" | "m" | "s" | "ms" | "us" | "ns"
+    ckw<"d"> |
+    ckw<"h"> |
+    ckw<"m"> |
+    ckw<"s"> |
+    ckw<"ms"> |
+    ckw<"us"> |
+    ckw<"ns">
 }
 
 number { Decimal | Float | Integer  }
@@ -75,17 +149,17 @@ Property {
 Object {
     "{" (Property ":" expression (Comma Property ":" expression)*)? "}"
 }
-Namespace {
+NamespaceId {
     identifier
 }
 FunctionName {
     identifier
 }
 FunctionCall {
-    (Namespace "::" )* FunctionName "(" (expression (Comma expression)*)? ")"
+    (NamespaceId "::" )* FunctionName "(" (expression (Comma expression)*)? ")"
 }
 Constant {
-    (Namespace "::")?
+    (NamespaceId "::")+
     identifier
 }
 Cast {
@@ -100,14 +174,17 @@ Column {
     identifier
 }
 Field {
-    expression ("as" identifier)? |
+    expression (As identifier)? |
     Star
+}
+ReferencedFulltextOperator {
+    "@" identifier "@"
 }
 BinaryExpression {
     expression !and And expression |
     expression !or Or expression |
     expression !comparison (
-        Comparison | "@" identifier "@"
+        Comparison | ReferencedFulltextOperator
     ) expression |
     expression !exp Raise expression |
     expression !times (DivideOrMultiply) expression |
@@ -118,114 +195,121 @@ BinaryExpression {
 }
 
 ReturnStatement {
-    kw<"return"> expression
+    Return expression
 }
 maybeTransaction {
-    kw<"transaction">?
+    Transaction?
 }
 BeginStatement {
-    kw<"begin"> maybeTransaction
+    Begin maybeTransaction
 }
 BreakStatement {
-    kw<"break">
+    Break
 }
 CancelStatement {
-    kw<"cancel"> maybeTransaction
+    Cancel maybeTransaction
 }
 CommitStatement {
-    kw<"commit"> maybeTransaction
+    Commit maybeTransaction
 }
 ContinueStatement {
-    kw<"continue">
+    Continue
 }
 UseStatement {
-    kw<"use">
-    (kw<"ns"> identifier)?
-    (kw<"db"> identifier)?
+    Use
+    (Ns identifier)?
+    (Db identifier)?
 }
 ThrowStatement {
-    kw<"throw"> expression
+    Throw expression
 }
 SleepStatement {
-    kw<"sleep"> expression
+    Sleep expression
 }
 ShowStatement {
-    kw<"show"> ckw<"changes"> kw<"for"> ckw<"table">
+    Show Changes For Table
     expression
-    ("since" expression)?
-    ("limit" expression)?
+    (Since expression)?
+    (Limit expression)?
 }
 LetStatement {
-    kw<"let"> Variable "=" (expression | statement)
+    Let Variable "=" (expression | statement)
 }
 InfoStatement {
-    kw<"info"> kw<"for">
+    Info For
     (
-        kw<"root"> |
-        kw<"ns"> | kw<"namespace"> |
-        kw<"db"> | kw<"database"> |
-        kw<"scope"> expression |
-        ckw<"table"> expression
+        Root |
+        Ns | Namespace |
+        Db | Database |
+        Scope expression |
+        Table expression
     )
 }
 orderBy {
-    expression ("collate" | "numeric")? ("asc" | "desc")?
+    expression (Collate | Numeric)? (Asc | Desc)?
 }
 maybeValue {
-    kw<"value">?
+    Value?
 }
 maybeAt {
-    kw<"at">?
+    At?
 }
 maybeBy {
-    kw<"by">?
+    By?
 }
 selectWith {
-    ("with" (kw<"noindex"> | kw<"index"> identifier (Comma identifier)))?
+    (With (Noindex | Index identifier (Comma identifier)))?
 }
 maybeOnly {
-    kw<"only">?
+    Only?
 }
 selectOrder {
-    ("order" maybeBy orderBy (Comma orderBy)*)?
+    (Order maybeBy orderBy (Comma orderBy)*)?
+}
+selectSource {
+    expression |
+    RecordRange |
+    GeneratedRecordID
 }
 selectFrom {
-    ("from" maybeOnly expression (Comma expression)*)?
+    (From maybeOnly selectSource (Comma selectSource)*)?
 }
-Where {
-    "where" expression
+WhereQueryPart {
+    Where expression
 }
 SelectStatement {
-    kw<"select">
+    Select
     maybeValue
     (Field (Comma Field)*)
-    ("omit" Field (Comma Field)*)?
+    (Omit Field (Comma Field)*)?
     selectFrom
     selectWith
-    Where?
-    ("split" maybeAt expression)?
-    ("group" maybeBy expression (Comma expression)*)?
+    WhereQueryPart?
+    (Split maybeAt expression)?
+    (Group maybeBy expression (Comma expression)*)?
     selectOrder
-    ("limit" maybeBy expression)?
-    ("start" maybeAt expression)?
-    ("timeout" expression)?
-    "parallel"?
-    ("explain" kw<"full">?)?
+    (Limit maybeBy expression)?
+    (Start maybeAt expression)?
+    (Timeout expression)?
+    Parallel?
+    (Explain Full?)?
 }
 
 ForStatement {
-    kw<"for"> expression "in" expression "{" (statement Semi)* statement "}"
+    For expression In expression "{" (statement Semi)* statement "}"
 }
 
-// IfStatement {
-//     kw<"if"> expression "then"? expression
-//     ("else" "if" expression "then"? expression)*
-//     ("else" expression)?
-// }
+IfStatement {
+    If expression Then expression
+    (Else If expression Then expression)*
+    (Else expression)?
+    End
+}
 
-Bool { kw<"true"> | kw<"false"> }
-None { kw<"none"> }
-Null { kw<"null"> }
+Bool {
+    True |
+    False
+}
 
 expression {
     String |
@@ -243,7 +327,8 @@ expression {
     BinaryExpression |
     Bool |
     None |
-    Null
+    Null |
+    Constant
 }
 ParenthesizedExpression {
     "(" (expression | statement) ")"
@@ -263,8 +348,8 @@ statement[@isGroup=Statement] {
     LetStatement |
     InfoStatement |
     SelectStatement |
-    ForStatement // |
-    // IfStatement
+    ForStatement |
+    IfStatement
 }
 
 @local tokens {
@@ -280,8 +365,6 @@ statement[@isGroup=Statement] {
     LineComment { ("//" | "-- ") ![\n]* }
 
     int { @digit+ }
-
-    identifier { $[a-zA-Z] $[a-zA-Z0-9_]* }
 
     RIDDelim { "`" }
     RIDStart { "⟨" }
@@ -307,31 +390,6 @@ statement[@isGroup=Statement] {
 
     Comma { "," }
     Semi { ";" }
-    Comparison {
-        "??" | "?:" |
-        "=" | "IS" |
-        "!=" | "IS NOT"|
-        "==" |
-        "?=" | "*=" |
-        "~" | "!~" | "?~" | "*~" |
-        "IN" | "NOT IN" |
-        "CONTAINS" | "∋" |
-        "CONTAINSNOT" | "∌" |
-        "CONTAINSALL" | "⊇" |
-        "CONTAINSANY" | "⊃" |
-        "CONTAINSNONE" | "⊅" |
-        "INSIDE" | "∈" |
-        "NOTINSIDE" | "NOT IN" | "∉" |
-        "ALLINSIDE" | "⊆" |
-        "ANYINSIDE" | "⊂" |
-        "NONEINSIDE" | "⊄" |
-        "OUTSIDE" |
-        "INTERSECTS" |
-        "<" | ">" | "<=" | ">=" |
-        "@@"
-    }
-    And { "&&" | "and" }
-    Or { "||" | "or" }
 
     "/*"
     "(" ")" "[" "]" "{" "}"

@@ -4,19 +4,30 @@
   "description": "SurrealQL language support for CodeMirror 6",
   "main": "dist/index.cjs",
   "type": "module",
+  "author": {
+    "name": "Daniel Bulant",
+    "email": "/@danbulant.eu",
+    "url": "https://danbulant.eu"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/danbulant/lang-surrealql.git"
+  },
+  "homepage": "https://github.com/danbulant/lang-surrealql",
   "exports": {
     "import": "./dist/index.js",
     "require": "./dist/index.cjs"
   },
   "scripts": {
     "test": "cm-runtests",
-    "prepare": "cm-buildhelper src/surrealql.ts"
+    "prepare": "lezer-generator src/surrealql.grammar -o src/surrealql.grammar && cm-buildhelper src/surrealql.ts"
   },
   "types": "dist/index.d.ts",
   "module": "dist/index.js",
   "sideEffects": false,
   "license": "MIT",
   "devDependencies": {
+    "@lezer/generator": "^1.0.0",
     "@codemirror/buildhelper": "^1.0.0"
   },
   "dependencies": {

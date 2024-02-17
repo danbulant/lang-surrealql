@@ -17,12 +17,13 @@ export let parser = baseParser.configure({
             Statement: continuedIndent()
         }),
         styleTags({
-            "StringPrefix as asc desc": t.keyword,
+            "StringPrefix as asc desc collate numeric": t.keyword,
+            "select from where group by having order limit return transaction begin break cancel commit continue use db ns sleep show changes for table since info namespace database scope table value at with noindex index only omit split start timeout parallel explain full in": t.keyword,
             Escape: t.escape,
             Bool: t.bool,
             "DivideOrMultiply AddOrSubtract": t.arithmeticOperator,
             "let <future>": t.definitionKeyword,
-            Namespace: t.namespace,
+            NamespaceId: t.namespace,
             FunctionName: t.function(t.variableName),
             Variable: t.variableName,
             Star: t.atom,
@@ -32,6 +33,7 @@ export let parser = baseParser.configure({
             LineComment: t.lineComment,
             BlockComment: t.blockComment,
             String: t.string,
+            Constant: t.constant(t.variableName),
             "return break ForStatement/for if else then": t.controlKeyword,
             "DurationUnit": t.unit,
             "None Null": t.null,
@@ -44,7 +46,8 @@ export let parser = baseParser.configure({
             "Semi Comma": t.separator,
             "( )": t.paren,
             "{ }": t.brace,
-            "[ ]": t.squareBracket
+            "[ ]": t.squareBracket,
+            "< >": t.angleBracket,
         })
     ]
 });
