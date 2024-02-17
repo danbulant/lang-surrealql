@@ -1,5 +1,5 @@
 @top Script {
-    (statement SEMI)*
+    (statement Semi)*
     statement
 }
 
@@ -59,15 +59,21 @@ StringPrefix {
 Integer { int }
 Decimal { int !int ("." int)? "dec" }
 Float { int !int (("." int) "f"? | "f" ) }
-Duration { int ("d" | "h" | "m" | "s" | "ms" | "us" | "ns") }
+Duration { int DurationUnit }
+DurationUnit {
+    "d" | "h" | "m" | "s" | "ms" | "us" | "ns"
+}
 
 number { Decimal | Float | Integer  }
 
 Array {
-    "[" (expression (COMMA expression)*)? "]"
+    "[" (expression (Comma expression)*)? "]"
+}
+Property {
+    identifier
 }
 Object {
-    "{" (identifier ":" expression (COMMA identifier ":" expression)*)? "}"
+    "{" (Property ":" expression (Comma Property ":" expression)*)? "}"
 }
 Namespace {
     identifier
@@ -76,7 +82,7 @@ FunctionName {
     identifier
 }
 FunctionCall {
-    (Namespace "::" )? FunctionName "(" (expression (COMMA expression)*)? ")"
+    (Namespace "::" )* FunctionName "(" (expression (Comma expression)*)? ")"
 }
 Constant {
     (Namespace "::")?
@@ -104,9 +110,9 @@ BinaryExpression {
         Comparison | "@" identifier "@"
     ) expression |
     expression !exp Raise expression |
-    expression !times (Divide | Multiply) expression |
-    expression !plus (Add | Subtract) expression |
-    expression !dot (".*"+ | ("." "*."*) expression) |
+    expression !times (DivideOrMultiply) expression |
+    expression !plus (AddOrSubtract) expression |
+    expression !dot (("." "*")+ | ("." "*")* "." expression) |
     expression? !dot "->" expression |
     expression !array ("[" expression "]")
 }
@@ -114,17 +120,20 @@ BinaryExpression {
 ReturnStatement {
     kw<"return"> expression
 }
+maybeTransaction {
+    kw<"transaction">?
+}
 BeginStatement {
-    kw<"begin"> kw<"transaction">?
+    kw<"begin"> maybeTransaction
 }
 BreakStatement {
     kw<"break">
 }
 CancelStatement {
-    kw<"cancel"> kw<"transaction">?
+    kw<"cancel"> maybeTransaction
 }
 CommitStatement {
-    kw<"commit"> kw<"transaction">?
+    kw<"commit"> maybeTransaction
 }
 ContinueStatement {
     kw<"continue">
@@ -172,16 +181,16 @@ maybeBy {
     kw<"by">?
 }
 selectWith {
-    ("with" (kw<"noindex"> | kw<"index"> identifier (COMMA identifier)))?
+    ("with" (kw<"noindex"> | kw<"index"> identifier (Comma identifier)))?
 }
 maybeOnly {
     kw<"only">?
 }
 selectOrder {
-    ("order" maybeBy orderBy (COMMA orderBy)*)?
+    ("order" maybeBy orderBy (Comma orderBy)*)?
 }
 selectFrom {
-    ("from" maybeOnly expression (COMMA expression)*)?
+    ("from" maybeOnly expression (Comma expression)*)?
 }
 Where {
     "where" expression
@@ -189,13 +198,13 @@ Where {
 SelectStatement {
     kw<"select">
     maybeValue
-    (Field (COMMA Field)*)
-    ("omit" Field (COMMA Field)*)?
+    (Field (Comma Field)*)
+    ("omit" Field (Comma Field)*)?
     selectFrom
     selectWith
     Where?
     ("split" maybeAt expression)?
-    ("group" maybeBy expression (COMMA expression)*)?
+    ("group" maybeBy expression (Comma expression)*)?
     selectOrder
     ("limit" maybeBy expression)?
     ("start" maybeAt expression)?
@@ -203,6 +212,20 @@ SelectStatement {
     "parallel"?
     ("explain" kw<"full">?)?
 }
+
+ForStatement {
+    kw<"for"> expression "in" expression "{" (statement Semi)* statement "}"
+}
+
+// IfStatement {
+//     kw<"if"> expression "then"? expression
+//     ("else" "if" expression "then"? expression)*
+//     ("else" expression)?
+// }
+
+Bool { kw<"true"> | kw<"false"> }
+None { kw<"none"> }
+Null { kw<"null"> }
 
 expression {
     String |
@@ -217,7 +240,10 @@ expression {
     RecordID |
     Column |
     ParenthesizedExpression |
-    BinaryExpression
+    BinaryExpression |
+    Bool |
+    None |
+    Null
 }
 ParenthesizedExpression {
     "(" (expression | statement) ")"
@@ -236,7 +262,9 @@ statement[@isGroup=Statement] {
     ShowStatement |
     LetStatement |
     InfoStatement |
-    SelectStatement
+    SelectStatement |
+    ForStatement // |
+    // IfStatement
 }
 
 @local tokens {
@@ -254,7 +282,6 @@ statement[@isGroup=Statement] {
     int { @digit+ }
 
     identifier { $[a-zA-Z] $[a-zA-Z0-9_]* }
-    columnIdentifier { identifier | "*" }
 
     RIDDelim { "`" }
     RIDStart { "⟨" }
@@ -264,8 +291,10 @@ statement[@isGroup=Statement] {
 
     Divide { "/" | "÷" }
     Multiply { "*" | "×" }
+    DivideOrMultiply { Divide | Multiply }
     Add { "+" }
     Subtract { "-" }
+    AddOrSubtract { Add | Subtract }
     Raise { "**" }
 
     Escape {
@@ -275,8 +304,8 @@ statement[@isGroup=Statement] {
     stringContentSingle { ![\\']+ }
     stringContentDouble { ![\\"]+ }
 
-    COMMA { "," }
-    SEMI { ";" }
+    Comma { "," }
+    Semi { ";" }
     Comparison {
         "??" | "?:" |
         "=" | "IS" |
@@ -310,7 +339,9 @@ statement[@isGroup=Statement] {
     "->"
 
     @precedence { "/*", LineComment, Divide }
+    @precedence { "/*", LineComment, DivideOrMultiply}
     @precedence { LineComment, Subtract }
+    @precedence { LineComment, AddOrSubtract }
 }
 
 @detectDelim

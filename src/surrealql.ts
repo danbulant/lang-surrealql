@@ -17,22 +17,31 @@ export let parser = baseParser.configure({
             Statement: continuedIndent()
         }),
         styleTags({
-            Keyword: t.keyword,
-            Type: t.typeName,
-            Builtin: t.standard(t.name),
-            Bits: t.number,
-            Bytes: t.string,
+            "StringPrefix as asc desc": t.keyword,
+            Escape: t.escape,
             Bool: t.bool,
-            Null: t.null,
-            Number: t.number,
-            String: t.string,
-            Identifier: t.name,
-            QuotedIdentifier: t.special(t.string),
-            SpecialVar: t.special(t.name),
+            "DivideOrMultiply AddOrSubtract": t.arithmeticOperator,
+            "let <future>": t.definitionKeyword,
+            Namespace: t.namespace,
+            FunctionName: t.function(t.variableName),
+            Variable: t.variableName,
+            "*": t.atom,
+            Integer: t.integer,
+            "Decimal Float": t.float,
+            Duration: t.number,
             LineComment: t.lineComment,
             BlockComment: t.blockComment,
-            Operator: t.operator,
-            "Semi Punctuation": t.punctuation,
+            String: t.string,
+            "return break ForStatement/for if else then": t.controlKeyword,
+            "DurationUnit": t.unit,
+            "None Null": t.null,
+            "RecordID": t.special(t.variableName),
+            "Comparison @": t.compareOperator,
+            "And Or": t.logicOperator,
+            "BinaryExpression/. ->": t.derefOperator,
+            ": :: ..=": t.punctuation,
+            "Column Property": t.propertyName,
+            "Semi Comma": t.separator,
             "( )": t.paren,
             "{ }": t.brace,
             "[ ]": t.squareBracket
@@ -40,7 +49,7 @@ export let parser = baseParser.configure({
     ]
 });
 
-const language = LRLanguage.define({
+export const language = LRLanguage.define({
     name: "surrealql",
     parser: parser,
     languageData: {
