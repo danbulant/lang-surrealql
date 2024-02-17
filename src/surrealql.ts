@@ -25,7 +25,7 @@ export let parser = baseParser.configure({
             Namespace: t.namespace,
             FunctionName: t.function(t.variableName),
             Variable: t.variableName,
-            "*": t.atom,
+            Star: t.atom,
             Integer: t.integer,
             "Decimal Float": t.float,
             Duration: t.number,

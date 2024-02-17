@@ -101,7 +101,7 @@ Column {
 }
 Field {
     expression ("as" identifier)? |
-    "*"
+    Star
 }
 BinaryExpression {
     expression !and And expression |
@@ -112,7 +112,7 @@ BinaryExpression {
     expression !exp Raise expression |
     expression !times (DivideOrMultiply) expression |
     expression !plus (AddOrSubtract) expression |
-    expression !dot (("." "*")+ | ("." "*")* "." expression) |
+    expression !dot (("." Star)+ | ("." Star)* "." expression) |
     expression? !dot "->" expression |
     expression !array ("[" expression "]")
 }
@@ -296,6 +296,7 @@ statement[@isGroup=Statement] {
     Subtract { "-" }
     AddOrSubtract { Add | Subtract }
     Raise { "**" }
+    Star { "*" }
 
     Escape {
       "\\" ("x" hex hex | "u" ("{" hex+ "}" | hex hex hex hex) | ![xu])
