@@ -1,6 +1,6 @@
 {
-  "name": "lang-surrealql",
-  "version": "1.0.0",
+  "name": "lezer-lang-surrealql",
+  "version": "0.1.0",
   "description": "SurrealQL language support for CodeMirror 6",
   "main": "dist/index.cjs",
   "type": "module",
