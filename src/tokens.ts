@@ -260,12 +260,14 @@ export const tokens = new ExternalTokenizer((input, stack) => {
 }, {contextual: false})
 
 export const specializeIdent = (text, stack) => {
+    text = text.toLowerCase()
     if(specmap.has(text)) {
         return specmap.get(text)
     }
     return -1
 }
 export const extendIdent = (text, stack) => {
+    text = text.toLowerCase()
     if(cspecmap.has(text)) {
         return cspecmap.get(text)
     }

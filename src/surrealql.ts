@@ -17,8 +17,8 @@ export let parser = baseParser.configure({
             Statement: continuedIndent()
         }),
         styleTags({
-            "StringPrefix as asc desc collate numeric": t.keyword,
-            "select from where group by having order limit return transaction begin break cancel commit continue use db ns sleep show changes for table since info namespace database scope table value at with noindex index only omit split start timeout parallel explain full in": t.keyword,
+            "StringPrefix As Asc Desc Collate Numeric": t.keyword,
+            "Select From Where Group By Having Order Limit Return Transaction Begin Break Cancel Commit Continue Use Db Ns Sleep Show Changes For Table Since Info Namespace Database Scope Table Value At With Noindex Index Only Omit Split Start Timeout Parallel Explain Full In": t.keyword,
             Escape: t.escape,
             Bool: t.bool,
             "DivideOrMultiply AddOrSubtract": t.arithmeticOperator,
@@ -34,7 +34,7 @@ export let parser = baseParser.configure({
             BlockComment: t.blockComment,
             String: t.string,
             Constant: t.constant(t.variableName),
-            "return break ForStatement/for if else then": t.controlKeyword,
+            "Return Break ForStatement/For If Else Then": t.controlKeyword,
             "DurationUnit": t.unit,
             "None Null": t.null,
             "RecordID": t.special(t.variableName),
