@@ -125,7 +125,7 @@ const kwmap = new Map([
         "outside",
         "intersects",
         "<", ">", "<=", ">=",
-        "@@", "@"
+        "@@"
     ], Comparison],
     [["&&", "and"], And],
     [["||", "or"], Or],
@@ -205,7 +205,7 @@ function isAlphaNum(ch: number) {
     return ch >= Ch.A && ch <= Ch.Z || ch >= Ch.a && ch <= Ch.z || ch >= Ch._0 && ch <= Ch._9 || ch == Ch.Underscore
 }
 
-function readWord(input: InputStream, result?: string) {
+function readWord(input: InputStream, result: string) {
     for (;;) {
         if (input.next != Ch.Underscore && !isAlphaNum(input.next)) break
         if (result != null) result += String.fromCharCode(input.next)
@@ -224,23 +224,37 @@ export const tokens = new ExternalTokenizer((input, stack) => {
     let {next} = input;
     if(isAlpha(next)) {
         input.advance()
-        let word = readWord(input, String.fromCharCode(next))
-        let word2: string | undefined = undefined
-        if (word != null) {
-            word = word.toLowerCase()
-            if(["is", "not"].includes(word)) {
-                // needs another word
-                skipSpaces(input)
-                word2 = readWord(input)
-                if(!word2) return;
-                word = word + " " + word2.toLowerCase()
+        let word = readWord(input, String.fromCharCode(next)).toLowerCase()
+        let word2;
+        if(["is", "not"].includes(word)) {
+            // needs another word
+            skipSpaces(input)
+            word2 = readWord(input, "")
+            if(!word2) return;
+            word = word + " " + word2.toLowerCase()
+        }
+        for(let [kws, token] of kwmap) {
+            if(kws.includes(word)) {
+                input.acceptToken(token)
+                return
             }
-            for(let [kws, token] of kwmap) {
-                if(kws.includes(word)) {
-                    input.acceptToken(token)
-                    return
+        }
+    } else {
+        // no idea why this doesn't work generally, it fails the parser weirdly.
+        // so this is used for special character operators only
+        let str = String.fromCharCode(next).toLowerCase();
+        while(allkws.find(kw => kw.startsWith(str))) {
+            if(allkws.includes(str)) {
+                for(let [kws, token] of kwmap) {
+                    if(kws.includes(str)) {
+                        input.advance()
+                        input.acceptToken(token)
+                        return
+                    }
                 }
             }
+            input.advance()
+            str += String.fromCharCode(input.next).toLowerCase()
         }
     }
 }, {contextual: false})
