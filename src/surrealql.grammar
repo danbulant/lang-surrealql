@@ -43,8 +43,8 @@
     In,
     Then,
     Else,
-    End,
-    identifier
+    End//,
+    // identifier
 }
 @external specialize {identifier} specializeIdent from "./tokens" {
     Return,
@@ -177,8 +177,10 @@ Field {
     expression (As identifier)? |
     Star
 }
-ReferencedFulltextOperator {
-    "@" identifier "@"
+@skip {} {
+    ReferencedFulltextOperator {
+        "@" int+ "@"
+    }
 }
 BinaryExpression {
     expression !and And expression |
@@ -363,6 +365,8 @@ statement[@isGroup=Statement] {
 @tokens {
     whitespace { @whitespace+ }
     LineComment { ("//" | "-- ") ![\n]* }
+
+    identifier { $[a-zA-Z_] $[a-zA-Z0-9_]* }
 
     int { @digit+ }
 

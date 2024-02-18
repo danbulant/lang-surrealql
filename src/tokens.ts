@@ -64,8 +64,7 @@ import {
 
     // extend
     Changes,
-    Table,
-    identifier
+    Table
 } from "./surrealql.grammar.terms"
 
 const enum Ch {
@@ -154,6 +153,7 @@ const kwmap = new Map([
     [["else"], Else],
     [["end"], End],
 ]);
+let allkws = [...kwmap.keys()].reduce((a, b) => a.concat(b), [])
 const specmap = new Map([
     ["return", Return],
     ["transaction", Transaction],
@@ -199,10 +199,10 @@ const cspecmap = new Map([
 ]);
 
 function isAlpha(ch: number) {
-    return ch >= Ch.A && ch <= Ch.Z || ch >= Ch.a && ch <= Ch.z
+    return ch >= Ch.A && ch <= Ch.Z || ch >= Ch.a && ch <= Ch.z || ch == Ch.Underscore
 }
 function isAlphaNum(ch: number) {
-    return ch >= Ch.A && ch <= Ch.Z || ch >= Ch.a && ch <= Ch.z || ch >= Ch._0 && ch <= Ch._9
+    return ch >= Ch.A && ch <= Ch.Z || ch >= Ch.a && ch <= Ch.z || ch >= Ch._0 && ch <= Ch._9 || ch == Ch.Underscore
 }
 
 function readWord(input: InputStream, result?: string) {
@@ -225,7 +225,6 @@ export const tokens = new ExternalTokenizer((input, stack) => {
     if(isAlpha(next)) {
         input.advance()
         let word = readWord(input, String.fromCharCode(next))
-        console.log("Got word", word)
         let word2: string | undefined = undefined
         if (word != null) {
             word = word.toLowerCase()
@@ -242,21 +241,19 @@ export const tokens = new ExternalTokenizer((input, stack) => {
                     return
                 }
             }
-            console.log("accepting identifier", word)
-            input.acceptToken(identifier)
         }
     }
-}, {contextual: true})
+}, {contextual: false})
 
 export const specializeIdent = (text, stack) => {
     if(specmap.has(text)) {
         return specmap.get(text)
     }
-    // console.log("sspec", text)
+    return -1
 }
 export const extendIdent = (text, stack) => {
     if(cspecmap.has(text)) {
         return cspecmap.get(text)
     }
-    console.log("cspec", text)
+    return -1
 }
